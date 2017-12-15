@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<parameters>
+	<parameter name="randomSeed"	displayName="Default Random Seed"	type="int"	defaultValue="1"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="end_tick"	displayName="End Simulation At Tick"	type="int"	defaultValue="3000"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<!-- ************************************* -->
+	<!-- FIREFIGHTER START-->
+	<parameter name="firefighter_strength"			displayName="Firefighter Strength"					type="int"		defaultValue="2"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="firefighter_life"			displayName="Firefighter Lifetime"					type="int"		defaultValue="1"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="firefighter_amount"			displayName="# Firefighters"						type="int"		defaultValue="20"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="firefighter_sight_range"		displayName="# Cells A Firefighter Sees Around"				type="int"		defaultValue="3"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="firefighter_initial_bounty"		displayName="Firefighter Starting Bounty"				type="int"		defaultValue="1000"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="firefighter_fire_reward_bounty"	displayName="Firefighter Reward Bounty For Extinguishing a Fire"	type="int"		defaultValue="100"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="firefighter_initial_speed"		displayName="Firefighter Initial Speed"					type="double"		defaultValue="0.08"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="firefighter_initial_speed_deviation"	displayName="Firefighter Initial Speed Deviation"			type="double"		defaultValue="0.01"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="firefighter_radio_range"		displayName="Firefighter Radio Messaging Range"				type="int"		defaultValue="10"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="firefighter_satellite_cost_multiplier"	displayName="Firefighter Satellite Cost Multiplier"			type="int"		defaultValue="2"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="firefighter_proportion_cooperative"	displayName="Cooperative Firefighters %"				type="double"		defaultValue="0.7"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="firefighter_proportion_selfish"	displayName="Selfish Firefighters %"					type="double"		defaultValue="0.2"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="firefighter_proportion_destructive"	displayName="Destructive Firefighters %"				type="double"		defaultValue="0.1"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="firefighter_num_leaders"		displayName="# Firefighter Leaders"					type="int"		defaultValue="1"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="firefighter_num_teams"			displayName="# Firefighter Teams"					type="int"		defaultValue="1"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<!-- FIREFIGHTER END-->						
+	<!-- ************************************* -->
+	<!-- FOREST START-->
+	<parameter name="forest_life"		displayName="Forest Lifetime"			type="int"	defaultValue="7"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="forest_ignition_prob"	displayName="Forest Ignition Probability (1/X)" type="int"	defaultValue="1000000"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<!-- FOREST END-->
+	<!-- RAIN START-->
+	<parameter name="rain_strength"			displayName="Rain Strength"			type="int"	defaultValue="1"		isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="rain_initial_speed"		displayName="Rain Initial Speed"		type="double"	defaultValue="0.0125"		isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="rain_initial_speed_deviation"	displayName="Rain Initial Speed Deviation"	type="double"	defaultValue="0.001"		isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="rain_spawnProb"		displayName="Rain Spawn Probability"		type="double"	defaultValue="0.12"		isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="rain_moveRandomness"		displayName="Rain Move Randomness"		type="double"	defaultValue="0.05"		isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="rain_vaporProb"		displayName="Rain Vapor Probability"		type="double"	defaultValue="0.1"		isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="rain_generation_speed"		displayName="Speed of Random Rain Generation"	type="double"	defaultValue="0.01"		isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<!-- RAIN END -->
+	<!-- ************************************* -->
+	<!-- FIRE START-->
+	<parameter name="fire_strength"			displayName="Fire Strength"			type="int"	defaultValue="2"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="fire_lifetime"			displayName="Fire Lifetime"			type="int"	defaultValue="10"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="fire_initial_speed"		displayName="Fire Initial Speed"		type="double"	defaultValue="0.06"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="fire_initial_speed_deviation"	displayName="Fire Initial Speed Deviation"	type="double"	defaultValue="0.01"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="fire_speed_rain_multiplier"	displayName="Fire Speed Rain Multiplier"	type="double"	defaultValue="1.1"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<!-- FIRE END -->
+	<!-- ************************************* -->
+	<!-- WIND START-->
+	<parameter name="wind_direction"		displayName="Wind Direction"			type="int"	defaultValue="0"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+	<parameter name="wind_initial_speed"		displayName="Wind Speed"			type="double"	defaultValue="0.1"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="wind_direction_variation"	displayName="Wind Direction Variation"		type="double"	defaultValue="10"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="wind_speed_deviation"		displayName="Wind Speed Deviation"		type="double"	defaultValue="0.01"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<parameter name="wind_direction_change_speed"	displayName="Wind Direction Change Speed"	type="double"	defaultValue="0.0025"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$DoubleConverter" />
+	<!-- WIND END -->
+	<!-- ************************************* -->
+	<!-- GRID START -->
+	<parameter name="gridHeight"	displayName="Grid Height"	type="int"	defaultValue="50"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />						
+	<parameter name="gridWidth"	displayName="Grid Width"	type="int"	defaultValue="50"	isReadOnly="false"	converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />						
+	<!-- GRID END -->
+</parameters>
+
+

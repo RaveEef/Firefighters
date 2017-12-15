@@ -1,0 +1,5 @@
+This is the fireFighters_MAS model. It was developed for the Multi-Agent Systems course at Maastricht University, by Kirill Tumanov in 2015.
+It forms a basic structure of the wildfire simulation, and allows students to focus on development of MAS concepts.
+Some inspiration was taken from the students, who took the course over the years, and the model was adjusted accordingly.
+
+Please contact the developer for more information at kirill@tumanov.co

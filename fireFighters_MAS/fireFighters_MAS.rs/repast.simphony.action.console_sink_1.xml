@@ -1,0 +1,17 @@
+<repast.simphony.data2.engine.ConsoleSinkDescriptor>
+  <name>A Console Sink</name>
+  <dataSet>Dataset_0</dataSet>
+  <delimiter>,</delimiter>
+  <format>LINE</format>
+  <sourceIds class="linked-hash-set">
+    <string>run</string>
+    <string>random_seed</string>
+    <string>tick</string>
+    <string>Overall Bounty</string>
+    <string>Firefighter Count</string>
+    <string>Fire Count</string>
+    <string>Forest Count</string>
+  </sourceIds>
+  <enabled>true</enabled>
+  <outputStream>OUT</outputStream>
+</repast.simphony.data2.engine.ConsoleSinkDescriptor>
