@@ -7,6 +7,8 @@ import java.util.Random;
 
 import org.stringtemplate.v4.compiler.STParser.ifstat_return;
 
+import com.jogamp.common.os.MachineDescription.ID;
+
 import repast.simphony.context.Context;
 import repast.simphony.engine.environment.RunEnvironment;
 import repast.simphony.engine.schedule.ActionQueue;
@@ -110,7 +112,7 @@ public class Firefighter {
 	 * @param id
 	 *            - an id of the firefighter
 	 */
-	public Firefighter(Context<Object> context, Grid<Object> grid, int id, int team, Firefighter leader, boolean isLeader) {
+	public Firefighter(Context<Object> context, Grid<Object> grid, int id, int team, Firefighter leader) {
 
 		params = RunEnvironment.getInstance().getParameters();
 		// Initialize local variables
@@ -118,13 +120,30 @@ public class Firefighter {
 		this.grid = grid;
 		this.id = id;
 		this.team = team;
-		if (leader != null) {
-			this.leader = leader;
-		}
-		this.isLeader = isLeader;
-		
 		this.numberOfTeams = params.getInteger("firefighter_num_teams");
 		this.numberOfLeaders = params.getInteger("firefighter_num_leaders");
+		if (leader != null) {
+			this.leader = leader;
+			this.isLeader = false;
+		} else {
+			this.leader = null;
+			if (this.numberOfLeaders > 0)
+				this.isLeader = true;
+			else 
+				this.isLeader = false;
+		}
+		
+		if(this.leader == null) {
+			if (this.isLeader) {
+				System.out.println("Firefighter " + id + " added to team " + team + " as leader.");	
+			} else {
+				System.out.println("Firefighter " + id + " added to team " + team + " with no leader");
+			}
+		}
+		else
+			System.out.println("Firefighter " + id + " added to team " + team + " with leader " + leader.getId());	
+		
+
 		lifePoints = params.getInteger("firefighter_life");
 		strength = params.getInteger("firefighter_strength");
 		sightRange = params.getInteger("firefighter_sight_range");
@@ -1436,6 +1455,9 @@ public class Firefighter {
 
 	}
 
+	public int getCoLeaderId() {
+		return coLeader.getId();
+	}
 	/*
 	 * public int getTotVisited() { return tot_visited; }
 	 * public int getWChecks() { return w_checks; }

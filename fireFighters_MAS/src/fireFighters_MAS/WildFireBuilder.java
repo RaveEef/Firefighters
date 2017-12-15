@@ -2,6 +2,9 @@ package fireFighters_MAS;
 
 import java.util.Random;
 
+import org.apache.commons.math3.analysis.function.Abs;
+import org.stringtemplate.v4.compiler.STParser.ifstat_return;
+
 import repast.simphony.context.Context;
 import repast.simphony.context.space.grid.GridFactory;
 import repast.simphony.context.space.grid.GridFactoryFinder;
@@ -56,50 +59,65 @@ public class WildFireBuilder implements ContextBuilder<Object>
 		int numberOfTeams = params.getInteger("firefighter_num_teams");
 		int numberOfLeaders = params.getInteger("firefighter_num_leaders");
 		
-		Firefighter firstLeader = null;
-		Firefighter secondLeader = null;
-		
-		// create leader firefighters
-		for (int i = 0; i < numberOfLeaders; i++) 
-		{
-			int team;
-			if (numberOfLeaders == 1 && numberOfTeams == 2)
-				team = 0;
-			else
-				team = (i % numberOfTeams) + 1; 
+		// [leader, leader]
+		int[] leaders =  new int[numberOfLeaders];
+		for (int i = 0; i < numberOfLeaders; i++) {
 			
-			Firefighter f = new Firefighter(context, grid, i, team, null, true);
-			if (team == 0 || team == 1) {
-				firstLeader = f;
-			} else {
-				secondLeader = f;
+			int leader = rnd_character.nextInt(firefighterCount);
+			if (i == 0)
+				leaders[i] = leader;
+			else {
+				// So no double leaders, and for both teams a leader (even team: odd leader)
+				while (leader == leaders[0] || (leader%2) == (leaders[0]%2)) {
+					leader = rnd_character.nextInt(firefighterCount);
+				}
+				leaders[i] = leader;
+			}
+		}
+		
+		Firefighter[] leaderFF = new Firefighter[numberOfLeaders];
+		for (int i = 0; i < numberOfLeaders; i++) {
+			leaderFF[i] = new Firefighter(context, grid, leaders[i], (leaders[i]%2) + 1, null);
+			leaderFF[i].setCharacter(rnd_character.nextDouble());
+			context.add(leaderFF[i]);
+			grid.moveTo(leaderFF[i], Tools.getRandomPosWithinBounds(grid).toIntArray(null));
+		}
+
+		nextFirefighter:
+		for (int i = 0; i < firefighterCount; i++) {
+			
+			for (int j = 0; j < numberOfLeaders; j++) {
+				if (i == leaders[j])
+					continue nextFirefighter;
 			}
 			
-			f.setCharacter(rnd_character.nextDouble());
-			context.add(f);
-			grid.moveTo(f, Tools.getRandomPosWithinBounds(grid).toIntArray(null));
-		}
-		
-		// create regular firefighters
-		for (int i = numberOfLeaders; i < firefighterCount; i++) {
-			int team = (i % numberOfTeams) + 1;
-			Firefighter leader;
-			if (team == 2 && numberOfLeaders == 2) {
-				leader = secondLeader;
+			Firefighter ff;
+			if (numberOfTeams == 1){
+				if (numberOfLeaders == 0)
+					ff = new Firefighter(context, grid, i, 1, null);
+				else
+					ff = new Firefighter(context, grid, i, 1, leaderFF[0]);
 			} else {
-				leader = firstLeader;
+				if (numberOfLeaders == 0)
+					ff = new Firefighter(context, grid, i, (i%2) + 1, null);
+				else if (numberOfLeaders == 1)
+					ff = new Firefighter(context, grid, i, (i%2) + 1, leaderFF[0]);
+				else
+					ff = new Firefighter(context, grid, i, (i%2) + 1, leaderFF[(i+1)%2]);
 			}
-			Firefighter f = new Firefighter(context, grid, i, team, leader, false);
-			f.setCharacter(rnd_character.nextDouble());
-			context.add(f);
-			grid.moveTo(f, Tools.getRandomPosWithinBounds(grid).toIntArray(null));
+			ff.setCharacter(rnd_character.nextDouble());
+			context.add(ff);
+			grid.moveTo(ff, Tools.getRandomPosWithinBounds(grid).toIntArray(null));
 		}
-		
-		if (firstLeader != null) {
-			firstLeader.pickCoLeader();
-		}
-		if (secondLeader != null) {
-			secondLeader.pickCoLeader();
+/*		Leader/Team issues resolved
+
+- Firefighter with ID = 0 was always chosen; now depending on rndSeed.
+- If Leader = 0, there was still a leader and coleader assigned.
+- In the case of 2 leaders, 2 teams, both teams have a leader which      would have been in the same team if it was no leader.
+- Coleader is in the same team as the leader'
+*/		for (int i = 0; i < numberOfLeaders; i++) {
+			leaderFF[i].pickCoLeader();
+			System.out.println("leader " + leaderFF[i].getId() + " choose FF " + leaderFF[i].getCoLeaderId() + " as Coleader.");
 		}
 		
 		// Create forest instances, and add them to the context and to the grid
