@@ -1,5 +1,7 @@
 package fireFighters_MAS;
 
+import java.util.Random;
+
 import repast.simphony.context.Context;
 import repast.simphony.context.space.grid.GridFactory;
 import repast.simphony.context.space.grid.GridFactoryFinder;
@@ -41,18 +43,65 @@ public class WildFireBuilder implements ContextBuilder<Object>
 		// Create a grid for the simulation
 		int gridXsize = params.getInteger("gridWidth");
 		int gridYsize = params.getInteger("gridHeight");
+		
 		GridFactory gridFactory = GridFactoryFinder.createGridFactory(null);
 		Grid<Object> grid = gridFactory.createGrid("grid", context,
 				new GridBuilderParameters<Object>(new BouncyBorders(), new SimpleGridAdder<Object>(), true, gridXsize, gridYsize));
 		// Create firefighter instances, and add them to the context and to the grid in random locations
 		int firefighterCount = params.getInteger("firefighter_amount");
+		Random rnd_character = new Random();
+		rnd_character.setSeed(params.getInteger("randomSeed"));
 		
-		for (int i = 0; i < firefighterCount; i++)
+		// get information about teams and leaders
+		int numberOfTeams = params.getInteger("firefighter_num_teams");
+		int numberOfLeaders = params.getInteger("firefighter_num_leaders");
+		
+		Firefighter firstLeader = null;
+		Firefighter secondLeader = null;
+		
+		// create leader firefighters
+		for (int i = 0; i < numberOfLeaders; i++) 
 		{
-			Firefighter f = new Firefighter(context, grid, i);
+			int team;
+			if (numberOfLeaders == 1 && numberOfTeams == 2)
+				team = 0;
+			else
+				team = (i % numberOfTeams) + 1; 
+			
+			Firefighter f = new Firefighter(context, grid, i, team, null, true);
+			if (team == 0 || team == 1) {
+				firstLeader = f;
+			} else {
+				secondLeader = f;
+			}
+			
+			f.setCharacter(rnd_character.nextDouble());
 			context.add(f);
 			grid.moveTo(f, Tools.getRandomPosWithinBounds(grid).toIntArray(null));
 		}
+		
+		// create regular firefighters
+		for (int i = numberOfLeaders; i < firefighterCount; i++) {
+			int team = (i % numberOfTeams) + 1;
+			Firefighter leader;
+			if (team == 2 && numberOfLeaders == 2) {
+				leader = secondLeader;
+			} else {
+				leader = firstLeader;
+			}
+			Firefighter f = new Firefighter(context, grid, i, team, leader, false);
+			f.setCharacter(rnd_character.nextDouble());
+			context.add(f);
+			grid.moveTo(f, Tools.getRandomPosWithinBounds(grid).toIntArray(null));
+		}
+		
+		if (firstLeader != null) {
+			firstLeader.pickCoLeader();
+		}
+		if (secondLeader != null) {
+			secondLeader.pickCoLeader();
+		}
+		
 		// Create forest instances, and add them to the context and to the grid
 		double forestProb = 1; // Probability to plant a forest on a grid cell
 		

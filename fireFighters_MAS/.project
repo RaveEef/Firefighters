@@ -34,4 +34,15 @@
 		<nature>repast.simphony.statecharts.diagram.repast_simphony_statechart_nature</nature>
 		<nature>repast.simphony.systemdynamics.diagram.repast_simphony_systemdynamics_nature</nature>
 	</natures>
+	<filteredResources>
+		<filter>
+			<id>1513371772740</id>
+			<name>src/fireFighters_MAS</name>
+			<type>6</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-desktop.ini</arguments>
+			</matcher>
+		</filter>
+	</filteredResources>
 </projectDescription>
