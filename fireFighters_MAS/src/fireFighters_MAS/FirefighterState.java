@@ -3,7 +3,8 @@ package fireFighters_MAS;
 public enum FirefighterState {
 	EXPLORING (true),
 	HELPING (false),
-	EXTINGUISHING (false);
+	EXTINGUISHING (false),
+	MOVING2FIRE (false);
 
 	FirefighterState(boolean checkWeather) {
 		this.checkWeather = checkWeather;

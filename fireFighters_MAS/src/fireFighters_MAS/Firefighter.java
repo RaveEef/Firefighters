@@ -21,11 +21,23 @@ import repast.simphony.random.RandomHelper;
 import repast.simphony.space.grid.Grid;
 import repast.simphony.space.grid.GridPoint;
 import repast.simphony.util.collections.IndexedIterable;
+import fireFighters_MAS.chart.Statechart;
+import repast.simphony.ui.probe.ProbedProperty;
 
 // Enumerator listing the available message transmission methods
 enum TransmissionMethod {
 	Radio, // Send a message with the radio (local)
 	Satellite // Send a message with a satellite (global)
+;
+
+	@ProbedProperty(displayName="Statechart")
+	Statechart statechart = Statechart.createStateChart(this, 0);
+	
+	public String getStatechartState(){
+		if (statechart == null) return "";
+		Object result = statechart.getCurrentSimpleState();
+		return result == null ? "" : result.toString();
+	}
 }
 
 /**
@@ -37,69 +49,80 @@ enum TransmissionMethod {
  */
 public class Firefighter {
 	// Local variables definition
+	private Parameters params;		// The parameter-set from context
 	private Context<Object> context; // Context in which the firefighter is placed
 	private Grid<Object> grid; // Grid in which the firefighter is projected
-	private int lifePoints; // Amount of damage the firefighter can still take from the fire, before
-							// extinction
+	private int id;		// Unique ID of the Ff
+	private int team; // Either team 1 or team 2 - leaders and co-leaders also belong to the same team
+	private int numberOfTeams; // Total number of teams
+	private int numberOfLeaders; // Total number of leaders
+	private Firefighter leader; // Null in case you are a leader or there is no leader
+	private Firefighter coLeader = null; // Null in case you are a coleader or you are a leader and you don't have a co-leader
+	private boolean isLeader; // Indicating whether the FF is a leader
+	private boolean isCoLeader = false; // Indicating whether the FF is a leader
+	
+	private int lifePoints; // Amount of damage the firefighter can still take, before extinction
 	private int strength; // Amount of damage the firefighter can deal to the fire
-	private Velocity velocity; // Vector describing the firefighter movement's heading and speed
 	private int sightRange; // Number of cells defining how far the firefighter can see around
 	private int bounty; // Bounty units the firefighter has
-	// Local variables initialization
-	private boolean newInfo; // Flag if the firefighter has a new info to communicate to peers
+	private Velocity velocity; // Vector describing the firefighter movement's heading and speed
 	private Knowledge knowledge; // A knowledge the firefighter has
+	private boolean newInfo; // Flag if the firefighter has a new info to communicate to peers
+
+	private FirefighterCharacter character; // The character of the firefighter defining its behavior
+
 	ISchedulableAction stepSchedule; // Action scheduled for the step method
 	ISchedulableAction removeSchedule; // Action scheduled for the remove method
-	int id; // An ID of the firefighter
-	private FirefighterCharacter character; // The character of the firefighter defining its behavior //TODO This should be
-						// implemented
-	private Parameters params;
+	
+	private int sat_counter;	// Counter for the amount of satellite use
+	private int radio_counter;	// Counter for the amount of radio use
+	private int tot_visited; // Number of visited tiles
+	private int ext_f_count; // Counter for the fires extinguished
+	private int msg_len; // Total message cost
+	private int stepCounter; // Count the number of calls for the step method
+	private int helpRange;	// Max range to send help request
+	private int radioRange; // Max range of radio communication
 
-	private int sat_counter;
-	private int radio_counter;
-	private int w_checks; // weather checks
-	private int tot_visited; // totally not overlapping visited tiles
-	private int ext_f_count; // extinguished fires counter
-	private int max_ticks; // max ticks before comm
-	private int msg_len; // total msg cost
-	private int stepCounter; // count the number of calls for the step method
-	private int helpRange;
-	private int radioRange;
+	// Variables for sending help-requests
 	private double helpDirection;
 	private GridPoint helpPos;
+	private int helpID;
+	
+	private GridPoint fire_2ext;		// The position of the fire chosen to extinguish (depending on character)
+	private GridPoint help_fire_2ext; 	// The position of the fire send through a help request
+	
+	// Counters for the tasks
 	private int taskReqCounter;
 	private int taskAccCounter;
 	private int taskCompCounter;
-	private int helpID;
-
-	private Firefighter leader; // could be null in case you are a leader or you don't have a leader
-	private Firefighter coLeader = null; // could be null in case you are not a leader or you are a leader and you don't have a co-leader
-	private int numberOfTeams; // total number of teams
-	private int numberOfLeaders; // total number of leaders
-	private int team; // either team1 or team2 -  there is a special case: team0 (meaning that you are a leader overseeing 2 teams) - leaders and co-leaders also belong to a team
-	private boolean isLeader; // boolean indicating whether you are a leader
-	private boolean isCoLeader = false; // boolean indicating whether you are a leader
+	
+	// Keeping track of the internalState of a FF
+	private FirefighterState internalState;
 
 	private Random rnd;
 	ArrayList<Firefighter> receivers;
-
-	private FirefighterState internalState;
-
+	
+	// Some constants/values regarding bounties
 	private int BOUNTY_MIN_BEFORE_ASKING;
 	private int BOUNTY_MIN_FOR_SENDING;
-	private int BOUNTY_SEND_AMOUNT;
-	private int trustThold;
-	private int max_bounty_reqs;
-
-	private ArrayList<Double> tot_bounty_req; //total requests done for each ff
-	private ArrayList<Double> succ_bounty_req; //total successfull requests for each ff
-	private ArrayList<Double> inc_bounty_req; //total requests recevied from each ff
-	private ArrayList<Double> trust;
-	private ArrayList<Double> trust_mul;  //trust multiplier, increases when
+	private int BOUNTY_SEND_AMOUNT;	
 	private int bounty_earned;
 	private int bounty_at_end;
 	private int bounty_spend_comm;
 	private int bounty_transfered_2peer;
+	private int max_bounty_reqs;
+	
+	// Array keeping track of bounty requests
+	private ArrayList<Double> tot_bounty_req; // total requests made
+	private ArrayList<Double> succ_bounty_req; // total successful outgoing requests
+	private ArrayList<Double> inc_bounty_req; // total requests recevied
+	
+	// Threshold for trusting a firefighter
+	private int trustThold;
+	
+	// Trust array for each firefighter and multiplier taking into account memory
+	private ArrayList<Double> trust;
+	private ArrayList<Double> trust_mul;  //trust multiplier, increases when trust is damaged
 
 
 	/**
@@ -113,36 +136,32 @@ public class Firefighter {
 	 *            - an id of the firefighter
 	 */
 	public Firefighter(Context<Object> context, Grid<Object> grid, int id, int team, Firefighter leader) {
-
-		params = RunEnvironment.getInstance().getParameters();
+		
 		// Initialize local variables
+		params = RunEnvironment.getInstance().getParameters();
 		this.context = context;
 		this.grid = grid;
 		this.id = id;
 		this.team = team;
 		this.numberOfTeams = params.getInteger("firefighter_num_teams");
 		this.numberOfLeaders = params.getInteger("firefighter_num_leaders");
+		// If there is a leader specified, FF cannot be a leader, but may be a co-leader or regular FF
 		if (leader != null) {
 			this.leader = leader;
 			this.isLeader = false;
-		} else {
+			if (leader.getCoLeader() == this)
+				this.isCoLeader = true;
+			else
+				this.isCoLeader = false;
+		} else {	//Either the leader or there's no leader at all in the context
 			this.leader = null;
 			if (this.numberOfLeaders > 0)
 				this.isLeader = true;
-			else 
+			else {
 				this.isLeader = false;
-		}
-		
-		if(this.leader == null) {
-			if (this.isLeader) {
-				System.out.println("Firefighter " + id + " added to team " + team + " as leader.");	
-			} else {
-				System.out.println("Firefighter " + id + " added to team " + team + " with no leader");
+				this.isCoLeader = false;
 			}
 		}
-		else
-			System.out.println("Firefighter " + id + " added to team " + team + " with leader " + leader.getId());	
-		
 
 		lifePoints = params.getInteger("firefighter_life");
 		strength = params.getInteger("firefighter_strength");
@@ -157,62 +176,61 @@ public class Firefighter {
 
 		sat_counter = 0;
 		radio_counter = 0;
-		w_checks = 0;
 		tot_visited = 0;
 		msg_len = 0;
 		ext_f_count = 0;
 		stepCounter = 0;
-		max_ticks = 20;
-		helpRange = params.getInteger("firefighter_radio_range")*2;
+		helpRange = 2 * params.getInteger("firefighter_radio_range");
 		radioRange = params.getInteger("firefighter_radio_range");
 
+		// Variables for sending help-requests
+		helpDirection = -1;		// No help direction received yet
+		helpPos = new GridPoint();	// No help position reached yet
+		helpID = -1;			// No help request received yet
+		
+		fire_2ext = new GridPoint();		// No fire chosen yet to extinguish
+		help_fire_2ext = new GridPoint();	// No fire received yet to extinguish
 
-		helpDirection = -1;
-		helpPos = new GridPoint();
-		helpID = -1;
-
+		// Counters for the tasks
 		taskReqCounter = 0;
 		taskAccCounter = 0;
 		taskCompCounter = 0;
-
-		internalState = FirefighterState.EXPLORING; //change internal state according to task
-
-		BOUNTY_MIN_BEFORE_ASKING = bounty/10;
-		BOUNTY_MIN_FOR_SENDING = bounty/5;
-		BOUNTY_SEND_AMOUNT = bounty/100;
-		trustThold = 5; //threshold for trusting a firefighter
-
+		
+		// Change internal state according to task, initially set to exploration of the forest
+		internalState = FirefighterState.EXPLORING; 
 
 		rnd = new Random();
 		rnd.setSeed(params.getInteger("randomSeed"));
 		receivers = new ArrayList<>();
 
+		// Some constants/values regarding bounties
+		BOUNTY_MIN_BEFORE_ASKING = bounty/10;
+		BOUNTY_MIN_FOR_SENDING = bounty/5;
+		BOUNTY_SEND_AMOUNT = bounty/100;
 		bounty_earned = 0;
 		bounty_at_end = 0;
 		bounty_spend_comm = 0;
 		bounty_transfered_2peer = 0;
 		max_bounty_reqs = 5;
-		//trust array for each firefighter and multiplier taking into account memory
-
-
+		
+		// Threshold for trusting a firefighter
+		trustThold = 5;
+		
+		// Trust array for each firefighter and multiplier taking into account memory
 		this.tot_bounty_req =new ArrayList<>();
 		this.succ_bounty_req =new ArrayList<>();
 		this.inc_bounty_req = new ArrayList<>();
 		this.trust = new ArrayList<>();
 		this.trust_mul = new ArrayList<>();
 
-		int firefighterCount = params.getInteger("firefighter_amount");
-
-
-		//initialize trust and multiplier to default values depending on character
-		for (int i=0; i < firefighterCount; i++) {
+		// Initialize trust and multiplier to default values
+		for (int i=0; i < params.getInteger("firefighter_amount"); i++) {
 				tot_bounty_req.add(0.0);
 				succ_bounty_req.add(0.0);
 				inc_bounty_req.add(0.0);
 				trust_mul.add(1.0);
 				trust.add(10.0);
 		}
-
 
 		// Schedule methods
 		ISchedule schedule = RunEnvironment.getInstance().getCurrentSchedule();
@@ -222,24 +240,26 @@ public class Firefighter {
 		stepSchedule = schedule.schedule(sch_params, this, "step");
 	}
 
-	// first ff which is in the correct team and is not dead will be the co-leader
-	public void pickCoLeader() {
-
-		Iterable<Object> objects = grid.getObjects();
-
-		for (Object obj : objects) {
+	// First FF which is in the same team as the leader
+	// and not dead will be the co-leader
+	public void pickCoLeader() 
+	{
+		for (Object obj : grid.getObjects()) {
 			if (obj.getClass() == Firefighter.class) {
 				Firefighter ff = (Firefighter) obj;
-				if (ff.getLifePoints() > 0 && ff.getId() != this.id && !ff.getIsCoLeader() && !ff.getIsLeader() && ((ff.getTeam() == this.team) || (this.team == 0))) {
+				if (ff.getLifePoints() > 0 && ff.getId() != this.id && !ff.getIsCoLeader() 
+						&& !ff.getIsLeader() && ((ff.getTeam() == this.team) || (this.team == 0))) {
 					ff.setIsCoLeader(true);
 					coLeader = ff;
-					break;
+					return;
 				}
 			}
 		}
 	}
 
-	protected void setCharacter(double rnd_character) {
+	
+	// Determining the firefighter's character from a random variable provided by WildFireKnowledge
+	public void setCharacter(double rnd_character) {
 
 		if (rnd_character < params.getDouble("firefighter_proportion_cooperative")) {
 			this.character = FirefighterCharacter.COOPERATIVE;
@@ -254,25 +274,21 @@ public class Firefighter {
 
 	/** A step method of the firefighter */
 	@ScheduledMethod(shuffle = false) // Prevent call order shuffling
-
-
 	public void step() {
 
-		if (Tools.isLastTick()) {
+		if (Tools.isLastTick()) 
 			bounty_at_end = getBounty();
-		}
 
-		if (!Tools.isAtTick(stepSchedule.getNextTime())) {
+		// Execute only at the specified ticks
+		if (!Tools.isAtTick(stepSchedule.getNextTime())) 
 			return;
-		} // Execute only at the specified ticks
-
+		
 		ISchedule schedule = RunEnvironment.getInstance().getCurrentSchedule();
 		//double current_tick = schedule.getTickCount();
 
-
-		if (!context.contains(this)) {
+		 // Safety
+		if (!context.contains(this))
 			return;
-		} // Safety
 
 		stepCounter++;
 		GridPoint myPos = grid.getLocation(this);
@@ -281,55 +297,49 @@ public class Firefighter {
 		// Info acquisition part (takes no time)
 		checkAroundForFire(sightRange);
 
-
-		if (checkSurroundedByFire()){ // If caught by fire, die
+		// If caught by fire, die
+		if (checkSurroundedByFire()) 
 			decreaseLifePoints(lifePoints);
-		} else if (stepCounter % Math.round((0.1 - velocity.speed) * 1000) == 0 && internalState.canCheckWeather()) {
-			w_checks++;
+		
+		// Checking the weather
+		else if (stepCounter % Math.round((0.1 - velocity.speed) * 1000) == 0 && internalState.canCheckWeather())
 			checkWeather();
-		} else if (knowledge.getFire(myPos)) { // If firefighter knows that he is standing in the fire
+		
+		// If firefighter knows that he is standing in the fire
+		else if (knowledge.getFire(myPos))
 			runOutOfFire();
-		} else if (internalState == FirefighterState.HELPING) {
-			if (Tools.getDistance(this.getPos(), helpPos) < sightRange) {
-				double result[] = findDirection2NearestFire();
-				double distance = result[1];
-
-				//if i am in help area and there is no fire decrease trust
+		
+		// If a help request has been received
+		else if (internalState == FirefighterState.HELPING) {
+			double result[] = findDirection2NearestFire();
+			double distance = result[1];
+			
+			// If the FF is selfish and a fire is spotted closer to its position than the help_fire_2ext position, deviate from the helpDirection
+			if (this.character == FirefighterCharacter.SELFISH && distance < Tools.getDistance(myPos, help_fire_2ext)) {
+				this.internalState = FirefighterState.MOVING2FIRE;
+			}
+			
+			// If a cooperative FF is near the position of the help_fire_2ext
+			else if (Tools.getDistance(myPos, help_fire_2ext) < sightRange) {
+		
+				// If the FF is in the help area and there is no fire, decrease trust
 				if (distance > sightRange) {
 					decreaseTrust(helpID);
 					internalState = FirefighterState.EXPLORING;
+				} else {
+					internalState = FirefighterState.MOVING2FIRE;
+					taskCompCounter++;
+					moveOrExtinguish();
 				}
-				else {
-				internalState = FirefighterState.EXTINGUISHING;
-				taskCompCounter++;
-				moveOrExtinguish();
-				}
+				
 			} else {
 				moveToHelp();
 			}
-		} else {
+		}
+		
+		else {
 			moveOrExtinguish();
 		}
-
-
-		//if (lifePoints > 0 && !initialized) {
-		//	knowledge.addPosition(myPos, -1);
-		//	initialized = true;
-		//}
-
-
-		/*if (knowledge.getAllFirefighters().size() != RunEnvironment.getInstance().getParameters()
-				.getInteger("firefighter_amount")) {
-			for (Object o : grid.getObjects()) {
-				if (o.getClass() == Firefighter.class) {
-					Firefighter ff = (Firefighter) o;
-					ff.knowledge.addFirefighter(myPos);
-					knowledge.addFirefighter(ff.getPos());
-				}
-			}
-		}
-
-		radioMessage();*/
 	}
 
 
@@ -420,8 +430,26 @@ public class Firefighter {
 	}
 
 	private void moveToHelp() {
+		
 		GridPoint myPos = grid.getLocation(this);
-
+		checkAroundForFire(sightRange);
+		double[] fireNear = findDirection2NearestFire();
+		if (fireNear[2] > -1 && fireNear[3] > -1) {
+			// If the fire is closer by than the fire from the help request
+			if (fireNear[1] < Tools.getDistance(myPos, help_fire_2ext)) {
+				GridPoint firePos = new GridPoint((int)fireNear[2], (int)fireNear[3]);
+				boolean x = isFireReachable(help_fire_2ext);
+				x = isFireReachable(firePos);
+				// If the fire from the help request is not reachable while the other fire is, switch choice of fire
+				if (!(isFireReachable(help_fire_2ext)) && isFireReachable(firePos)) {
+					fire_2ext = firePos;
+					this.internalState = FirefighterState.MOVING2FIRE;
+					tryToMove(Tools.getAngle(myPos, fire_2ext));
+					return;
+				}
+			}
+		}
+		
 		for (int i = 0; i < 8; i++) {
 			GridPoint newPos = Tools.dirToCoord(helpDirection + (i % 2 == 0 ? -i * 45 : i * 45), myPos);
 
@@ -452,7 +480,31 @@ public class Firefighter {
 
 		return false;
 	}
-
+	
+	public boolean isFireReachable(GridPoint firePos) {
+		
+		GridPoint myPos = getPos();
+		double fireDist = Tools.getDistance(myPos, firePos);
+		double fireDirection = Tools.getAngle(myPos, firePos);
+		
+		GridPoint fireDirCell = Tools.dirToCoord(fireDirection, myPos);
+			
+		for (GridPoint p : knowledge.getAllFire()) 
+		{
+			int dist = Tools.getDistance(myPos, p);
+			GridPoint posDirCell = Tools.dirToCoord(Tools.getAngle(myPos, p), myPos);
+				
+			// Two fires in the same direction
+			if (posDirCell.equals(fireDirCell)) 
+			{
+				// There is another fire closer to the agents
+				if (dist < fireDist)
+					return false;
+			}
+		}
+		return true;
+	}
+	
 	/** Firefighter's reaction on being in the fire */
 	private void runOutOfFire() {
 		if (!decreaseLifePoints(1)) {
@@ -469,13 +521,8 @@ public class Firefighter {
 		tryToMove(directionUpwind); // Try to move in an upwind direction to escape from fire
 	}
 
-	/**
-	 * Decrease the lifePoints of the firefighter by a given amount
-	 *
-	 * @param amount
-	 *            - an amount to decrease by
-	 * @return 1 if still active, 0 - otherwise
-	 */
+	
+	
 
 	private boolean isTrusted(int id) {
 		if (trust.get(id) > trustThold) {
@@ -484,6 +531,7 @@ public class Firefighter {
 		return false;
 	}
 
+	
 	private void decreaseTrust(int id) {
 
 		//System.out.println("Decreasing Trust of "+id);
@@ -522,7 +570,14 @@ public class Firefighter {
 
 		return team;
 	}
-
+	
+	/**
+	 * Decrease the lifePoints of the firefighter by a given amount
+	 *
+	 * @param amount
+	 *            - an amount to decrease by
+	 * @return 1 if still active, 0 - otherwise
+	 */
 	private boolean decreaseLifePoints(int amount) {
 		lifePoints -= amount;
 
@@ -553,7 +608,9 @@ public class Firefighter {
 		return true;
 	}
 
+
 	/**
+
 	 * Check a NxN area around the firefighter for fires (N = 2*sightRange + 1)
 	 *
 	 * @param sightRange
@@ -609,6 +666,7 @@ public class Firefighter {
 		if (fire != null) {
 			if (!fire.decreaseLifetime(strength)) // If the fire was extinguished
 			{
+				fire_2ext = new GridPoint();
 				adaptBounty(params.getInteger("firefighter_fire_reward_bounty"), false);
 				bounty_earned += params.getInteger("firefighter_fire_reward_bounty");
 				ext_f_count++;
@@ -692,16 +750,19 @@ public class Firefighter {
 
 	}
 
+
 	/**
-	 * Method used to find the direction and distance to the nearest fire
+	 * Method used to find the direction, distance, x-coord, and y-coord to the nearest fire
 	 *
-	 * @return a tuple (direction, distance) to the nearest fire
+	 * @return a tuple (direction, distance, x, y) to the nearest fire
 	 */
 	private double[] findDirection2NearestFire() {
 		GridPoint myPos = grid.getLocation(this);
 		int minDist = Integer.MAX_VALUE;
 		double direction = -1;
-
+		double fire_x = -1;
+		double fire_y = -1;
+		
 		for (GridPoint p : knowledge.getAllFire()) // For all the fires in the firefighter's knowledge
 		{
 			int dist = Tools.getDistance(myPos, p);
@@ -710,10 +771,12 @@ public class Firefighter {
 			if (dist < minDist) {
 				minDist = dist;
 				direction = Tools.getAngle(myPos, p);
+				fire_x = (double)p.getX();
+				fire_y = (double)p.getY();
 			}
 		}
 
-		double[] result = { direction, (minDist == Integer.MAX_VALUE ? -1 : minDist) };
+		double[] result = { direction, (minDist == Integer.MAX_VALUE ? -1 : minDist) , fire_x, fire_y};
 
 		return result;
 	}
@@ -755,6 +818,7 @@ public class Firefighter {
 		newInfo = true;
 	}
 
+	
 	public void HelpMultiCast(GridPoint firePos) {
 
 		GridPoint myPos = grid.getLocation(this);
@@ -860,6 +924,7 @@ public class Firefighter {
 		}
 	}
 
+	
 	public void receiveHelpMC(Message message) {
 		String[] msg = message.getContent().split(",");
 		helpPos = new GridPoint(Integer.parseInt(msg[0]), Integer.parseInt(msg[1]));
@@ -868,16 +933,22 @@ public class Firefighter {
 		if (!isLeader || (numberOfLeaders == 0))  {
 			//System.out.print("[INFO] Received help req, not leader at "+helpPos+'\n');
 			//can help if not extinguishing or inhelp and if ff is trusted
-			if (internalState != FirefighterState.EXTINGUISHING && internalState != FirefighterState.HELPING && isTrusted(helpID)) {
-				internalState = FirefighterState.HELPING;
-				helpDirection = getHelpDirection(helpPos);
-				taskAccCounter++;
+			if (internalState == FirefighterState.MOVING2FIRE && isTrusted(helpID)) {
+				if (isFireReachable(helpPos) && Tools.getDistance(helpPos, getPos()) <= Tools.getDistance(fire_2ext, getPos()))
+					fire_2ext = helpPos;
+				
+				else if (internalState != FirefighterState.EXTINGUISHING && internalState != FirefighterState.HELPING && isTrusted(helpID)) {
+					internalState = FirefighterState.HELPING;
+					fire_2ext = helpPos;
+					helpDirection = getHelpDirection(helpPos);
+					taskAccCounter++;
+				}
 			}
 		}
-
 		else {
 			//System.out.print("[INFO] Received help req, leader at "+helpPos+'\n');
-			HelpMultiCast(helpPos);
+			fire_2ext = helpPos;
+			HelpMultiCast(fire_2ext);
 
 
 		}
@@ -893,7 +964,7 @@ public class Firefighter {
 	}
 
 	private double getHelpDirection(GridPoint firePos) {
-
+		help_fire_2ext = firePos;
 		GridPoint myPos = grid.getLocation(this);
 		return Tools.getAngle(myPos, firePos);
 
@@ -1455,8 +1526,8 @@ public class Firefighter {
 
 	}
 
-	public int getCoLeaderId() {
-		return coLeader.getId();
+	public Firefighter getCoLeader() {
+		return coLeader;
 	}
 	/*
 	 * public int getTotVisited() { return tot_visited; }

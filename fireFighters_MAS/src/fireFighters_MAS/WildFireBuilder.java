@@ -1,5 +1,6 @@
 package fireFighters_MAS;
 
+import java.util.ArrayList;
 import java.util.Random;
 
 import org.apache.commons.math3.analysis.function.Abs;
@@ -50,46 +51,45 @@ public class WildFireBuilder implements ContextBuilder<Object>
 		GridFactory gridFactory = GridFactoryFinder.createGridFactory(null);
 		Grid<Object> grid = gridFactory.createGrid("grid", context,
 				new GridBuilderParameters<Object>(new BouncyBorders(), new SimpleGridAdder<Object>(), true, gridXsize, gridYsize));
+		
 		// Create firefighter instances, and add them to the context and to the grid in random locations
 		int firefighterCount = params.getInteger("firefighter_amount");
-		Random rnd_character = new Random();
-		rnd_character.setSeed(params.getInteger("randomSeed"));
 		
-		// get information about teams and leaders
+		// Get information about the number teams and leaders
 		int numberOfTeams = params.getInteger("firefighter_num_teams");
 		int numberOfLeaders = params.getInteger("firefighter_num_leaders");
 		
+		Random rnd_character = new Random();
+		rnd_character.setSeed(params.getInteger("randomSeed"));
+		
 		// [leader, leader]
-		int[] leaders =  new int[numberOfLeaders];
-		for (int i = 0; i < numberOfLeaders; i++) {
-			
+		ArrayList<Integer> leaders = new ArrayList<>();
+		for (int i = 0; i < numberOfLeaders; i++) 
+		{
 			int leader = rnd_character.nextInt(firefighterCount);
 			if (i == 0)
-				leaders[i] = leader;
+				leaders.add(leader);
 			else {
 				// So no double leaders, and for both teams a leader (even team: odd leader)
-				while (leader == leaders[0] || (leader%2) == (leaders[0]%2)) {
+				while (leader == leaders.get(0) || (leader % 2) == (leaders.get(0) % 2))
 					leader = rnd_character.nextInt(firefighterCount);
-				}
-				leaders[i] = leader;
+				leaders.add(leader);
 			}
 		}
 		
 		Firefighter[] leaderFF = new Firefighter[numberOfLeaders];
 		for (int i = 0; i < numberOfLeaders; i++) {
-			leaderFF[i] = new Firefighter(context, grid, leaders[i], (leaders[i]%2) + 1, null);
+			leaderFF[i] = new Firefighter(context, grid, leaders.get(i), (leaders.get(i) % 2) + 1, null);
 			leaderFF[i].setCharacter(rnd_character.nextDouble());
 			context.add(leaderFF[i]);
 			grid.moveTo(leaderFF[i], Tools.getRandomPosWithinBounds(grid).toIntArray(null));
 		}
 
-		nextFirefighter:
-		for (int i = 0; i < firefighterCount; i++) {
-			
-			for (int j = 0; j < numberOfLeaders; j++) {
-				if (i == leaders[j])
-					continue nextFirefighter;
-			}
+		
+		for (int i = 0; i < firefighterCount; i++) 
+		{
+			if (leaders.contains(i))
+				continue;
 			
 			Firefighter ff;
 			if (numberOfTeams == 1){
@@ -109,16 +109,9 @@ public class WildFireBuilder implements ContextBuilder<Object>
 			context.add(ff);
 			grid.moveTo(ff, Tools.getRandomPosWithinBounds(grid).toIntArray(null));
 		}
-/*		Leader/Team issues resolved
 
-- Firefighter with ID = 0 was always chosen; now depending on rndSeed.
-- If Leader = 0, there was still a leader and coleader assigned.
-- In the case of 2 leaders, 2 teams, both teams have a leader which      would have been in the same team if it was no leader.
-- Coleader is in the same team as the leader'
-*/		for (int i = 0; i < numberOfLeaders; i++) {
+		for (int i = 0; i < numberOfLeaders; i++)
 			leaderFF[i].pickCoLeader();
-			System.out.println("leader " + leaderFF[i].getId() + " choose FF " + leaderFF[i].getCoLeaderId() + " as Coleader.");
-		}
 		
 		// Create forest instances, and add them to the context and to the grid
 		double forestProb = 1; // Probability to plant a forest on a grid cell
